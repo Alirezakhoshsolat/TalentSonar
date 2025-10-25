@@ -1,0 +1,27 @@
+# Environment variables
+# CRITICAL: Prevents your API keys from being uploaded to GitHub
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+.env/
+
+# VS Code
+.vscode/
+
+# TalentSonar specific
+talentsonar/output/
+talentsonar/__pycache__/
+talentsonar/src/__pycache__/
+talentsonar/config/__pycache__/
+analysis_result.json
+
+# OS-specific
+.DS_Store
+Thumbs.db

@@ -1,0 +1,58 @@
+Software Engineer - Full Stack Development
+
+Position: Senior Full Stack Software Engineer
+Company: TechCorp Inc.
+Location: San Francisco, CA (Remote available)
+Type: Full-time
+Salary: $120,000 - $180,000
+
+Job Description:
+We are seeking a highly skilled Senior Full Stack Software Engineer to join our dynamic development team. The ideal candidate will have extensive experience in both frontend and backend development, with a passion for creating scalable web applications.
+
+Required Qualifications:
+- Bachelor's degree in Computer Science, Software Engineering, or related field
+- 5+ years of experience in full-stack web development
+- Proficiency in JavaScript, TypeScript, and Python
+- Strong experience with React.js and Node.js
+- Experience with SQL databases (PostgreSQL, MySQL) and NoSQL databases (MongoDB)
+- Knowledge of RESTful API design and development
+- Experience with Git version control and collaborative development
+- Understanding of Agile/Scrum methodologies
+
+Preferred Qualifications:
+- Master's degree in Computer Science or related field
+- Experience with cloud platforms (AWS, Azure, or GCP)
+- Knowledge of containerization technologies (Docker, Kubernetes)
+- Experience with CI/CD pipelines
+- Familiarity with microservices architecture
+- Experience with testing frameworks (Jest, Pytest, Selenium)
+- AWS or Azure certifications
+
+Key Responsibilities:
+- Design, develop, and maintain full-stack web applications
+- Collaborate with cross-functional teams including designers, product managers, and other engineers
+- Write clean, maintainable, and efficient code
+- Participate in code reviews and provide constructive feedback
+- Troubleshoot and debug applications
+- Stay up-to-date with emerging technologies and industry trends
+- Mentor junior developers and contribute to team knowledge sharing
+
+Skills We Value:
+- Strong problem-solving and analytical thinking abilities
+- Excellent communication and teamwork skills
+- Attention to detail and commitment to quality
+- Ability to work in a fast-paced, dynamic environment
+- Self-motivated with strong time management skills
+- Leadership experience and mentoring capabilities
+
+Benefits:
+- Competitive salary and equity package
+- Comprehensive health, dental, and vision insurance
+- 401(k) with company matching
+- Flexible work arrangements including remote work options
+- Professional development budget for conferences and training
+- Unlimited PTO policy
+- Modern office space with free meals and snacks
+
+Company Culture:
+We foster an inclusive, collaborative environment where innovation thrives. Our team values continuous learning, open communication, and work-life balance. We believe in empowering our employees to take ownership of their projects and make meaningful contributions to our products.
