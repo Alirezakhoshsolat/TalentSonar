@@ -22,6 +22,19 @@ talentsonar/src/__pycache__/
 talentsonar/config/__pycache__/
 analysis_result.json
 
+# Streamlit
+.streamlit/cache/
+.streamlit/secrets.toml
+
+# Data (persisted at runtime, not tracked)
+data/*.json
+data/*.csv
+
+# Exclude sandbox and archives/DBs
+hack/
+*.zip
+*.db
+
 # OS-specific
 .DS_Store
 Thumbs.db

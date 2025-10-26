@@ -2,6 +2,7 @@ import random
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import asyncio
 
 # --- Integration with TalentSonar ---
 # Add the project root to the Python path to find the 'talentsonar' module
@@ -12,6 +13,7 @@ from talentsonar.src.job_analyzer import JobAnalyzer
 from talentsonar.src.github_scraper import GitHubScraper
 from talentsonar.src.talent_matcher import TalentMatcher
 from talentsonar.config import settings
+from modules.github_discovery import discover_candidates_for_job
 
 # Load environment variables from .env file
 load_dotenv()
@@ -35,25 +37,26 @@ class SmartRecruiter:
         
         self.candidates = []
         self.job_postings = []
+        
+        # Cache for GitHub profiles to reduce API calls
+        self.github_profile_cache = {}
+        
         self.load_initial_data()
 
     def load_initial_data(self):
-        # Pre-load some mock jobs and candidates to start with
-        self.job_postings = [
-            {'title': 'Senior Python Developer', 'description': 'A job for a Python expert with 5+ years of experience in Django and AWS.'},
-            {'title': 'Frontend React Engineer', 'description': 'Requires strong skills in React, TypeScript, and 3+ years experience.'}
-        ]
-        self.candidates = [
-            {
-                'id': 1, 'name': 'Alice Johnson', 'skills': ['Python', 'Django', 'AWS', 'PostgreSQL'], 
-                'years_experience': 5, 'github_contributions': 150, 'portfolio_projects': ['E-commerce Backend', 'Data Pipeline', 'Internal Tool'], 
-                'recent_certifications': 1, 'status': 'Not Invited'
-            }
-        ]
+        # Start clean; no mock jobs or candidates. Jobs and candidates will be loaded from files by app.py if present.
+        self.job_postings = []
+        self.candidates = []
 
     def get_candidate_by_id(self, candidate_id):
+        # Handle both int and string IDs
+        try:
+            cid = int(candidate_id)
+        except (ValueError, TypeError):
+            return None
+            
         for candidate in self.candidates:
-            if candidate['id'] == candidate_id:
+            if int(candidate.get('id', -1)) == cid:
                 return candidate
         return None
 
@@ -90,84 +93,135 @@ class SmartRecruiter:
         return self._mock_score(candidate, job_requirements)
 
     def discover_unconventional_candidates(self, job_id, max_candidates=5):
-        """(REAL) Discover candidates from GitHub based on a job's requirements."""
+        """(REAL) Discover candidates using GitHub GraphQL and scoring (no mocks)."""
         if not self.scraper.github_token:
             raise ValueError("GitHub token not found. Please add GITHUB_TOKEN to your .env file.")
-        
-        # 1. Get the job and analyze it
-        job = self.job_postings[job_id]
-        requirements = self.parse_job_requirements(job['description'])
-        
-        # 2. Build a smart GitHub search query (similar to talent_pipeline.py logic)
-        query_parts = []
-        tech_skills = requirements.get('technical', [])
-        
-        # Add language filters for top skills
-        lang_map = {
-            "python": "python", "javascript": "javascript", "java": "java",
-            "typescript": "typescript", "go": "go", "rust": "rust",
-            "ruby": "ruby", "php": "php", "c++": "cpp", "c#": "csharp",
-            "react": "javascript", "vue": "javascript", "angular": "javascript",
-            "django": "python", "flask": "python", "node": "javascript"
-        }
-        
-        for skill in tech_skills[:3]:  # Top 3 skills
-            skill_lower = skill.lower()
-            for name, gh_lang in lang_map.items():
-                if name in skill_lower and f"language:{gh_lang}" not in query_parts:
-                    query_parts.append(f"language:{gh_lang}")
-                    break
-        
-        # Add quality filters
-        query_parts.append("followers:>=10")
-        query_parts.append("repos:>=5")
-        
-        query = " ".join(query_parts)
-        if not query:
-            raise ValueError("Could not generate a search query from job requirements.")
 
-        # 3. Search GitHub for users
-        print(f"Searching GitHub with query: {query}")
-        search_results = self.scraper.search_users(query, max_results=max_candidates)
-        
-        if not search_results:
-            return []
-        
-        # 4. Analyze each candidate's GitHub profile
+        # 1. Get the job and analyze it (prefer precomputed analysis to avoid slow LLM calls)
+        job = self.job_postings[job_id]
+        requirements = job.get('analysis') or self.parse_job_requirements(job['description'])
+        tech_skills = requirements.get('technical', [])
+
+        # 2. Run GraphQL-based discovery and scoring
+        try:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                # Running inside an event loop (e.g., Streamlit experimental), create task and run with asyncio.run_coroutine_threadsafe
+                future = asyncio.run_coroutine_threadsafe(
+                    discover_candidates_for_job(tech_skills, max_candidates=max_candidates, github_token=self.scraper.github_token),
+                    loop,
+                )
+                gh_candidates = future.result()
+            else:
+                gh_candidates = asyncio.run(
+                    discover_candidates_for_job(tech_skills, max_candidates=max_candidates, github_token=self.scraper.github_token)
+                )
+        except Exception as e:
+            print(f"GraphQL discovery failed: {e}")
+            gh_candidates = []
+
+        # 3. If nothing found, fallback to REST-based discovery via TalentSonar
+        if not gh_candidates:
+            print("GraphQL returned no candidates; falling back to REST search/analysis")
+            # Build a simple query from top technical skills
+            lang_map = {
+                "python": "python", "javascript": "javascript", "java": "java",
+                "typescript": "typescript", "go": "go", "rust": "rust",
+                "ruby": "ruby", "php": "php", "c++": "cpp", "c#": "csharp",
+                "react": "javascript", "vue": "javascript", "angular": "javascript",
+                "django": "python", "flask": "python", "node": "javascript"
+            }
+            query_parts = []
+            for skill in tech_skills[:3]:
+                s = skill.lower()
+                for key, gh_lang in lang_map.items():
+                    if key in s and f"language:{gh_lang}" not in query_parts:
+                        query_parts.append(f"language:{gh_lang}")
+                        break
+            query_parts += ["followers:>=10", "repos:>=5"]
+            query = " ".join(query_parts) if query_parts else "repos:>=5 followers:>=10"
+
+            users = self.scraper.search_users(query, max_results=max_candidates)
+            if not users:
+                # Try unauthenticated as a last resort (limited to 60 req/hr)
+                alt_scraper = GitHubScraper(github_token=None)
+                users = alt_scraper.search_users(query, max_results=max_candidates)
+            new_candidates = []
+            for user in users or []:
+                username = user.get('username') or user.get('login')
+                if not username:
+                    continue
+                # Use cache if available
+                if username in self.github_profile_cache:
+                    analysis = self.github_profile_cache[username]
+                else:
+                    # Use whichever scraper generated the users list
+                    scraper_used = self.scraper if users and users is not None else alt_scraper
+                    analysis = scraper_used.analyze_candidate_skills(username)
+                    if "error" in analysis:
+                        continue
+                    self.github_profile_cache[username] = analysis
+                profile = analysis.get('profile', {})
+                stats = analysis.get('statistics', {})
+                languages = list(analysis.get('languages', {}).keys())[:5]
+                new_id = len(self.candidates) + len(new_candidates) + 1
+                candidate = {
+                    'id': new_id,
+                    'name': profile.get('name') or username,
+                    'username': username,
+                    'skills': languages + analysis.get('technologies', [])[:5],
+                    'years_experience': random.randint(2, 8),
+                    'github_contributions': stats.get('total_stars', 0),
+                    'portfolio_projects': [repo['name'] for repo in analysis.get('repositories', [])[:3]],
+                    'recent_certifications': 0,
+                    'status': 'Not Invited',
+                    'source': 'GitHub Discovery (REST fallback)',
+                    'profile_url': profile.get('profile_url', ''),
+                    'location': profile.get('location'),
+                    'github_analysis': analysis
+                }
+                # Provide an immediate match_score using a lightweight heuristic
+                try:
+                    candidate['match_score'] = self._mock_score(candidate, requirements)
+                except Exception:
+                    candidate['match_score'] = 0.0
+                new_candidates.append(candidate)
+            self.candidates.extend(new_candidates)
+            return new_candidates
+
+        # 4. Map GraphQL results to our candidate schema
         new_candidates = []
-        for user in search_results:
-            username = user.get('username')
-            print(f"Analyzing GitHub user: @{username}")
-            
-            # Get full candidate analysis
-            analysis = self.scraper.analyze_candidate_skills(username)
-            
-            if "error" in analysis:
-                continue
-            
-            # Extract info for our candidate format
-            profile = analysis.get('profile', {})
-            stats = analysis.get('statistics', {})
-            languages = list(analysis.get('languages', {}).keys())[:5]
-            
+        for item in gh_candidates:
+            username = item.get('login') or ''
             new_id = len(self.candidates) + len(new_candidates) + 1
+            skills = list(dict.fromkeys((item.get('langsFound', []) + item.get('topicsFound', []))))[:10]
+            portfolio_projects = [r.get('name') for r in item.get('portfolio', []) if r.get('name')][:3]
+
             candidate = {
                 'id': new_id,
-                'name': profile.get('name') or username,
+                'name': item.get('name') or username,
                 'username': username,
-                'skills': languages + analysis.get('technologies', [])[:5],
-                'years_experience': random.randint(2, 8),  # Could calculate from account age
-                'github_contributions': stats.get('total_stars', 0),
-                'portfolio_projects': [repo['name'] for repo in analysis.get('repositories', [])[:3]],
+                'skills': skills,
+                'years_experience': random.randint(2, 8),
+                'github_contributions': item.get('total_stars', 0),
+                'portfolio_projects': portfolio_projects,
                 'recent_certifications': 0,
                 'status': 'Not Invited',
-                'source': 'GitHub Discovery',
-                'profile_url': profile.get('profile_url', ''),
-                'location': profile.get('location'),
-                'github_analysis': analysis  # Store full analysis for potential matching
+                'source': 'GitHub Discovery (GraphQL)',
+                'profile_url': f"https://github.com/{username}" if username else '',
+                'location': item.get('location') or '',
+                'discovery_score': item.get('score', 0.0),
+                'discovery_reasons': item.get('reasons', []),
+                'github_graphql': item,
             }
+            # Bridge for UI sorting/meters
+            candidate['match_score'] = candidate['discovery_score']
             new_candidates.append(candidate)
-        
+
         self.candidates.extend(new_candidates)
         return new_candidates
 
@@ -218,3 +272,15 @@ class SmartRecruiter:
         ]
         
         return sorted(scores, key=lambda x: x['score'], reverse=True)[:top_n]
+    
+    def clear_github_cache(self):
+        """Clear the GitHub profile cache to force fresh data."""
+        self.github_profile_cache.clear()
+        print("GitHub profile cache cleared")
+    
+    def get_cache_stats(self):
+        """Get cache statistics."""
+        return {
+            'cached_profiles': len(self.github_profile_cache),
+            'usernames': list(self.github_profile_cache.keys())
+        }
