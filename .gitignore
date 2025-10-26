@@ -31,7 +31,7 @@ data/*.json
 data/*.csv
 
 # Exclude sandbox and archives/DBs
-hack/
+
 *.zip
 *.db
 
