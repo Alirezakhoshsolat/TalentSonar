@@ -3,9 +3,8 @@
 ![Python](https://img.shields.io/badge/python-3.8%2B-yellow)
 ![Gemini API](https://img.shields.io/badge/Gemini-API-blue)
 ![Streamlit](https://img.shields.io/badge/streamlit-deployed-red)
-![GraphQL](https://img.shields.io/badge/GraphQL-API-pink)
 
-Recruiting platform that uses the Gemini API to parse job descriptions and extract required skills, then matches them against candidate profiles fetched via GraphQL. Built to reduce the manual work of translating job postings into actionable hiring criteria.
+Recruiting platform for HR teams. Paste a job description, Gemini API extracts the required skills and experience criteria, and the system finds and assesses candidates sourced from GitHub. Supports PDF, Word, and markdown job description uploads.
 
 ## Live Demo
 
@@ -16,25 +15,39 @@ Recruiting platform that uses the Gemini API to parse job descriptions and extra
 - Parham Khosh Solat
 - Amirhosein Shahdadian
 
-## What it does
+## Features
 
-Recruiters paste a job description. Gemini API processes it and returns a structured list of required technical and soft skills. Those skills feed into a candidate questionnaire, and GraphQL pulls live profile data to support the matching process.
+**For HR teams:**
+- Create and manage job postings with customizable skill requirements and priority weights
+- Upload job descriptions in PDF, Word, or markdown — Gemini API parses and structures them automatically
+- Discover candidates from GitHub and review their profiles
+- Track active jobs, candidates, invitations, and test completions from the HR dashboard
 
-The app handles real data — no mock responses.
+**Candidate assessment:**
+- Generate custom questionnaires covering technical skills and soft skills
+- Multiple question formats: multiple choice, text responses, rating scales
+- Session-based test management with resume capability
+- Available in English and Italian
 
 ## Tech Stack
 
-- Gemini API — job description parsing and skill extraction
-- GraphQL — candidate profile data retrieval
+- Gemini API (`google-generativeai`) — job description parsing and skill extraction
+- GitHub API — candidate discovery
 - Streamlit — user interface
-- Python
+- PyPDF2, python-docx — document parsing
+- Pydantic — data validation
+- JSON file storage — jobs, candidates, test results
 
 ## Project Structure
 
 ```
 ├── app.py                 # Main Streamlit application
-├── gemini_utils.py        # Gemini API integration
-├── graphql_utils.py       # GraphQL queries and data fetching
+├── talentsonar/           # Core package
+├── modules/               # Feature modules
+├── pages/                 # Streamlit pages
+├── scripts/               # Utility scripts
+├── test_integration.py    # Integration tests
+├── .env.example           # Environment variable template
 ├── requirements.txt
 └── README.md
 ```
@@ -45,13 +58,9 @@ The app handles real data — no mock responses.
 git clone https://github.com/Alirezakhoshsolat/TalentSonar.git
 cd TalentSonar
 pip install -r requirements.txt
+cp .env.example .env
+# Add your Gemini API key to .env
 streamlit run app.py
-```
-
-You will need a Gemini API key set as an environment variable:
-
-```bash
-export GEMINI_API_KEY=your_key_here
 ```
 
 ## License

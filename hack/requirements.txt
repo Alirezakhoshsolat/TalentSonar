@@ -1,8 +1,0 @@
-httpx
-python-dotenv
-google-generativeai
-streamlit
-pandas
-sqlmodel
-pypdf
-python-docx
