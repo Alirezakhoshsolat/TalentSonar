@@ -55,7 +55,7 @@ Recruiting platform for HR teams. Paste a job description, Gemini API extracts t
 ## Local Setup
 
 ```bash
-git clone https://github.com/Alirezakhoshsolat/TalentSonar.git
+git clone https://github.com/parhamkhoshsolat/TalentSonar.git
 cd TalentSonar
 pip install -r requirements.txt
 cp .env.example .env
