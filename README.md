@@ -8,7 +8,7 @@ Recruiting platform for HR teams. Paste a job description, Gemini API extracts t
 
 ## Live Demo
 
-[TalentSonar on HuggingFace Spaces](https://huggingface.co/spaces/parhamaki/TalentSonar)
+[TalentSonar on HuggingFace Spaces](https://huggingface.co/spaces/parhamkhoshsolat/TalentSonar)
 
 ## Team
 
